@@ -12,7 +12,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-API_KEY = "AQ.Ab8RN6KxogZjv13mWOoPo1xyhej2NdS14FiAupCGAxgtA18KOg"
+API_KEY = "Gemini API key"
 
 # Global dictionary to track progress
 progress_state = {
