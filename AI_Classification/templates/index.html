@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Taxonomy Classification</title>
+    <!-- Use Bootstrap for beautiful, clean styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5" style="max-width: 800px;">
+        <h2 class="mb-4 text-center text-primary fw-bold">AI Taxonomy Classifier</h2>
+        
+        <div class="card shadow-sm p-4 mb-4 border-0">
+            <form id="uploadForm">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">1. Upload Input Sheet (e.g. your hal.xlsx / 2-oct.xlsx)</label>
+                    <input class="form-control" type="file" id="inputFile" required accept=".xlsx">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold">2. Upload Taxonomy Sheet (Taxonomy.xlsx)</label>
+                    <input class="form-control" type="file" id="taxFile" required accept=".xlsx">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" id="startBtn">Start AI Classification</button>
+            </form>
+        </div>
+        
+        <div id="progressArea" style="display: none;">
+            <div class="card shadow-sm p-5 text-center border-0">
+                <h4 id="statusText" class="text-primary mb-3">Processing...</h4>
+                <div class="progress mb-3" style="height: 30px; font-size: 16px; border-radius: 10px;">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;">0%</div>
+                </div>
+                <p id="messageText" class="text-muted fw-bold"></p>
+                <a href="/download" id="downloadBtn" class="btn btn-success btn-lg mt-3 fw-bold shadow-sm" style="display: none;">📥 Download Completed Excel File</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('input_file', document.getElementById('inputFile').files[0]);
+            formData.append('tax_file', document.getElementById('taxFile').files[0]);
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('startBtn').innerText = 'Starting...';
+            document.getElementById('progressArea').style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('progressBar').classList.add('progress-bar-animated');
+            document.getElementById('statusText').innerText = 'Processing your data...';
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json()).then(data => {
+                if(data.error) {
+                    alert(data.error);
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('startBtn').innerText = 'Start AI Classification';
+                } else {
+                    checkProgress(); // Start polling for updates
+                }
+            }).catch(err => {
+                alert("Upload failed. Make sure the server is running!");
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').innerText = 'Start AI Classification';
+            });
+        });
+        
+        function checkProgress() {
+            fetch('/progress').then(res => res.json()).then(data => {
+                let percent = 0;
+                if(data.total_rows > 0) {
+                    percent = Math.floor((data.current_row / data.total_rows) * 100);
+                }
+                
+                document.getElementById('progressBar').style.width = percent + '%';
+                document.getElementById('progressBar').innerText = percent + '%';
+                document.getElementById('messageText').innerText = data.message;
+                
+                if(data.status === 'running' || data.status === 'idle') {
+                    // Poll every 2 seconds
+                    setTimeout(checkProgress, 2000);
+                } else if (data.status === 'completed') {
+                    document.getElementById('progressBar').classList.remove('progress-bar-animated');
+                    document.getElementById('progressBar').style.width = '100%';
+                    document.getElementById('progressBar').innerText = '100%';
+                    document.getElementById('statusText').innerText = 'Classification Complete! 🎉';
+                    document.getElementById('downloadBtn').style.display = 'inline-block';
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('startBtn').innerText = 'Start Another File';
+                } else if (data.status === 'error') {
+                    alert("An error occurred: " + data.message);
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('startBtn').innerText = 'Start AI Classification';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
